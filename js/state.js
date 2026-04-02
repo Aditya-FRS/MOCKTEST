@@ -28,27 +28,30 @@ const state = {
     _loaded: false
 };
 
-// Load all state from Firestore
+// Load all state from Firestore (each query independent - one failing won't block others)
 async function loadStateFromServer() {
-    try {
-        const username = state.currentUser.username;
-        const [users, exams, notifications, todos] = await Promise.all([
-            api.getAllUsers(),
-            api.getExams(username),
-            api.getNotifications(username),
-            api.getTodos(username)
-        ]);
-        state.users = users;
-        state.exams = exams;
-        state.notifications = notifications;
-        state.todos = todos;
-        state._loaded = true;
-        updateNotificationBadge();
+    const username = state.currentUser.username;
 
-        // Setup real-time listeners for live sync
+    // Load each independently so one failure doesn't block others
+    const [users, exams, notifications, todos] = await Promise.all([
+        api.getAllUsers().catch(e => { console.warn('Failed to load users:', e); return []; }),
+        api.getExams(username).catch(e => { console.warn('Failed to load exams:', e); return []; }),
+        api.getNotifications(username).catch(e => { console.warn('Failed to load notifications:', e); return []; }),
+        api.getTodos(username).catch(e => { console.warn('Failed to load todos:', e); return []; })
+    ]);
+
+    state.users = users;
+    state.exams = exams;
+    state.notifications = notifications;
+    state.todos = todos;
+    state._loaded = true;
+    updateNotificationBadge();
+
+    // Setup real-time listeners for live sync
+    try {
         api.setupRealtimeListeners(username);
     } catch (e) {
-        console.warn('Failed to load state from Firestore:', e);
+        console.warn('Failed to setup real-time listeners:', e);
     }
 }
 

@@ -275,10 +275,11 @@ const api = {
     async getNotifications(username) {
         const snap = await db.collection('notifications')
             .where('targetUser', '==', username)
-            .orderBy('timestamp', 'desc')
-            .limit(50)
             .get();
-        return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        const notifs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        // Sort client-side (avoids needing Firestore composite index)
+        notifs.sort((a, b) => (b.timestamp || '').localeCompare(a.timestamp || ''));
+        return notifs.slice(0, 50);
     },
 
     async markNotificationRead(notifId) {
@@ -339,8 +340,6 @@ const api = {
         // Listen for new notifications
         const notifUnsub = db.collection('notifications')
             .where('targetUser', '==', username)
-            .orderBy('timestamp', 'desc')
-            .limit(10)
             .onSnapshot(snap => {
                 snap.docChanges().forEach(change => {
                     if (change.type === 'added') {
