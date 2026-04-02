@@ -40,35 +40,31 @@ async function handleLogin() {
 
     const email = USER_EMAIL_MAP[username] || username + '@example.com';
 
+    // Try login first
     try {
         const user = await api.login(email, password);
         state.currentUser = user;
-
-        // Load all data from Firestore
         await loadStateFromServer();
-
-        // Load GitHub config
         await loadGitHubConfig();
-
         errorMsg.classList.remove('show');
         showMainApp();
+        return;
     } catch (e) {
-        console.error('Login failed:', e);
-        // If user doesn't exist in Firebase Auth yet, try to create them
-        if (e.code === 'auth/user-not-found') {
-            try {
-                await createFirebaseUser(username, email, password);
-                const user = await api.login(email, password);
-                state.currentUser = user;
-                await loadStateFromServer();
-                await loadGitHubConfig();
-                errorMsg.classList.remove('show');
-                showMainApp();
-                return;
-            } catch (createErr) {
-                console.error('User creation failed:', createErr);
-            }
-        }
+        console.log('Login attempt failed:', e.code, e.message);
+    }
+
+    // Login failed — try to auto-create the user (first-time setup)
+    try {
+        await createFirebaseUser(username, email, password);
+        const user = await api.login(email, password);
+        state.currentUser = user;
+        await loadStateFromServer();
+        await loadGitHubConfig();
+        errorMsg.classList.remove('show');
+        showMainApp();
+    } catch (createErr) {
+        console.error('Auto-create failed:', createErr.code, createErr.message);
+        // If user already exists but wrong password, show error
         errorMsg.classList.add('show');
     }
 }
