@@ -11,12 +11,12 @@
    ============================================ */
 
 const firebaseConfig = {
-    apiKey: "",
-    authDomain: "",
-    projectId: "",
-    storageBucket: "",
-    messagingSenderId: "",
-    appId: ""
+    apiKey: "AIzaSyDC2Khvg545ScjEgc5P76kpsgkX26smAmA",
+    authDomain: "mocktest-7d23a.firebaseapp.com",
+    projectId: "mocktest-7d23a",
+    storageBucket: "mocktest-7d23a.firebasestorage.app",
+    messagingSenderId: "818688386166",
+    appId: "1:818688386166:web:cc33683000ea00eb19eb57"
 };
 
 // Initialize Firebase
