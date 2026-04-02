@@ -1,12 +1,27 @@
 /* ============================================
-   Authentication - Firebase Auth
-   Uses email/password with Firestore user profiles
+   Authentication - Simple local credentials
+   Firestore used only for data, NOT for auth
    ============================================ */
 
-// Map usernames to emails for Firebase Auth
-const USER_EMAIL_MAP = {
-    'doraemon': 'doraemon@example.com',
-    'nobitha': 'nobitha@example.com'
+const USERS = {
+    'doraemon': {
+        username: 'doraemon',
+        password: 'nobitha456',
+        name: 'Doraemon',
+        email: 'doraemon@example.com',
+        personalEmail: 'doraemon.personal@gmail.com',
+        role: 'teacher',
+        avatar: '\u{1F916}'
+    },
+    'nobitha': {
+        username: 'nobitha',
+        password: 'doraemon123',
+        name: 'Nobitha Nobi',
+        email: 'nobitha@example.com',
+        personalEmail: 'nobitha.personal@gmail.com',
+        role: 'student',
+        avatar: '\u{1F466}'
+    }
 };
 
 function setupLoginHandlers() {
@@ -38,56 +53,41 @@ async function handleLogin() {
         return;
     }
 
-    const email = USER_EMAIL_MAP[username] || username + '@example.com';
-
-    // Try login first
-    try {
-        const user = await api.login(email, password);
-        state.currentUser = user;
-        await loadStateFromServer();
-        await loadGitHubConfig();
-        errorMsg.classList.remove('show');
-        showMainApp();
-        return;
-    } catch (e) {
-        console.log('Login attempt failed:', e.code, e.message);
-    }
-
-    // Login failed — try to auto-create the user (first-time setup)
-    try {
-        await createFirebaseUser(username, email, password);
-        const user = await api.login(email, password);
-        state.currentUser = user;
-        await loadStateFromServer();
-        await loadGitHubConfig();
-        errorMsg.classList.remove('show');
-        showMainApp();
-    } catch (createErr) {
-        console.error('Auto-create failed:', createErr.code, createErr.message);
-        // If user already exists but wrong password, show error
+    const user = USERS[username];
+    if (!user || user.password !== password) {
         errorMsg.classList.add('show');
+        return;
     }
-}
 
-// Create user in Firebase Auth + Firestore profile (first-time setup)
-async function createFirebaseUser(username, email, password) {
-    const profiles = {
-        'doraemon': { name: 'Doraemon', personalEmail: 'doraemon.personal@gmail.com', role: 'teacher', avatar: '\u{1F916}' },
-        'nobitha': { name: 'Nobitha Nobi', personalEmail: 'nobitha.personal@gmail.com', role: 'student', avatar: '\u{1F466}' }
+    // Set current user instantly (no server call)
+    state.currentUser = {
+        username: user.username,
+        name: user.name,
+        email: user.email,
+        personalEmail: user.personalEmail,
+        role: user.role,
+        avatar: user.avatar
     };
 
-    const profile = profiles[username] || { name: username, personalEmail: email, role: 'student', avatar: '\u{1F464}' };
+    // Populate state.users with all known users
+    state.users = Object.values(USERS).map(u => ({
+        username: u.username,
+        name: u.name,
+        email: u.email,
+        personalEmail: u.personalEmail,
+        role: u.role,
+        avatar: u.avatar
+    }));
 
-    const cred = await auth.createUserWithEmailAndPassword(email, password);
-    await db.collection('users').doc(cred.user.uid).set({
-        username,
-        email,
-        name: profile.name,
-        personalEmail: profile.personalEmail,
-        role: profile.role,
-        avatar: profile.avatar,
-        createdAt: new Date().toISOString()
-    });
+    // Save login to sessionStorage for page reload
+    sessionStorage.setItem('mocktest_user', username);
+
+    errorMsg.classList.remove('show');
+    showMainApp();
+
+    // Load cloud data in background (non-blocking)
+    loadStateFromServer();
+    loadGitHubConfig();
 }
 
 function showMainApp() {
@@ -109,9 +109,9 @@ function updateHeader() {
     document.getElementById('headerUserRole').textContent = user.role;
 }
 
-async function handleLogout() {
+function handleLogout() {
     api.clearListeners();
-    try { await api.logout(); } catch (e) {}
+    sessionStorage.removeItem('mocktest_user');
     state.currentUser = null;
     state.currentExam = null;
     state.exams = [];
@@ -132,4 +132,30 @@ function showNotificationsAlert() {
         ? state.notifications.map(n => `\u2022 ${n.title}\n  ${n.body}`).join('\n\n')
         : 'No new notifications';
     alert('\u{1F4E7} Notifications:\n\n' + msg);
+}
+
+// Restore session on page reload
+function restoreSession() {
+    const saved = sessionStorage.getItem('mocktest_user');
+    if (saved && USERS[saved]) {
+        const user = USERS[saved];
+        state.currentUser = {
+            username: user.username,
+            name: user.name,
+            email: user.email,
+            personalEmail: user.personalEmail,
+            role: user.role,
+            avatar: user.avatar
+        };
+        state.users = Object.values(USERS).map(u => ({
+            username: u.username,
+            name: u.name,
+            email: u.email,
+            personalEmail: u.personalEmail,
+            role: u.role,
+            avatar: u.avatar
+        }));
+        return true;
+    }
+    return false;
 }
