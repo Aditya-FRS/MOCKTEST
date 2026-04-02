@@ -37,6 +37,7 @@ function isGitHubConfigured() {
 async function uploadImageToGitHub(base64Data, filename) {
     if (!isGitHubConfigured()) {
         console.warn('GitHub not configured. Storing image locally.');
+        showNotificationPopup('⚠️ GitHub Not Configured', 'Image saved as base64. Go to ⚙️ Settings to configure GitHub.');
         return { success: false, url: base64Data, error: 'GitHub not configured' };
     }
 
@@ -51,12 +52,19 @@ async function uploadImageToGitHub(base64Data, filename) {
         const safeName = filename.replace(/[^a-zA-Z0-9._-]/g, '_');
         const path = `${GITHUB_CONFIG.imageFolder}/${timestamp}_${safeName}`;
 
+        console.log('Uploading to GitHub:', GITHUB_CONFIG.owner + '/' + GITHUB_CONFIG.repo + '/' + path);
+
+        // Support both classic tokens (ghp_) and fine-grained tokens (github_pat_)
+        const authHeader = GITHUB_CONFIG.token.startsWith('github_pat_')
+            ? `Bearer ${GITHUB_CONFIG.token}`
+            : `token ${GITHUB_CONFIG.token}`;
+
         const response = await fetch(
             `https://api.github.com/repos/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/contents/${path}`,
             {
                 method: 'PUT',
                 headers: {
-                    'Authorization': `token ${GITHUB_CONFIG.token}`,
+                    'Authorization': authHeader,
                     'Content-Type': 'application/json',
                     'Accept': 'application/vnd.github.v3+json'
                 },
@@ -70,13 +78,28 @@ async function uploadImageToGitHub(base64Data, filename) {
 
         if (!response.ok) {
             const errData = await response.json();
-            throw new Error(errData.message || 'GitHub API error');
+            const errMsg = errData.message || 'GitHub API error';
+            console.error('GitHub API error:', response.status, errMsg);
+
+            if (response.status === 401) {
+                showNotificationPopup('❌ GitHub Auth Failed', 'Token is invalid or expired. Check ⚙️ Settings.');
+            } else if (response.status === 404) {
+                showNotificationPopup('❌ GitHub Repo Not Found', 'Check repo name and owner in ⚙️ Settings.');
+            } else if (response.status === 403) {
+                showNotificationPopup('❌ GitHub Permission Denied', 'Token needs "Contents: Read and write" permission.');
+            } else {
+                showNotificationPopup('❌ GitHub Upload Failed', errMsg);
+            }
+
+            throw new Error(errMsg);
         }
 
         const data = await response.json();
         // Use raw.githubusercontent.com URL for direct image access
         const rawUrl = `https://raw.githubusercontent.com/${GITHUB_CONFIG.owner}/${GITHUB_CONFIG.repo}/${GITHUB_CONFIG.branch}/${path}`;
 
+        console.log('GitHub upload success:', rawUrl);
+        showNotificationPopup('✅ Image Uploaded', 'Saved to GitHub repository');
         return { success: true, url: rawUrl };
     } catch (error) {
         console.error('GitHub upload failed:', error);
@@ -186,13 +209,73 @@ function showGitHubConfigModal() {
                     Generate at GitHub Settings > Developer settings > Personal access tokens. Needs 'repo' scope.
                 </span>
             </div>
+            <div id="ghTestResult" style="display:none;margin-top:12px;padding:12px;border-radius:8px;font-size:13px;"></div>
             <div style="display:flex;gap:12px;justify-content:flex-end;margin-top:20px;">
                 <button class="btn btn-outline" onclick="closeGitHubConfigModal()">Cancel</button>
+                <button class="btn btn-secondary" style="width:auto;" onclick="testGitHubConnection()">🔗 Test Connection</button>
                 <button class="btn btn-primary" style="width:auto;" onclick="saveGitHubConfig()">Save Configuration</button>
             </div>
         </div>
     `;
     showDynamicModal(html);
+}
+
+async function testGitHubConnection() {
+    const owner = document.getElementById('ghOwner').value.trim();
+    const repo = document.getElementById('ghRepo').value.trim();
+    const token = document.getElementById('ghToken').value.trim();
+    const resultEl = document.getElementById('ghTestResult');
+
+    if (!owner || !repo || !token) {
+        resultEl.style.display = 'block';
+        resultEl.style.background = 'var(--color-bg-4)';
+        resultEl.style.color = 'var(--color-error)';
+        resultEl.textContent = '❌ Please fill in Owner, Repo, and Token first.';
+        return;
+    }
+
+    resultEl.style.display = 'block';
+    resultEl.style.background = 'var(--color-bg-3)';
+    resultEl.style.color = 'var(--color-text-secondary)';
+    resultEl.textContent = '⏳ Testing connection...';
+
+    try {
+        const authHeader = token.startsWith('github_pat_') ? `Bearer ${token}` : `token ${token}`;
+
+        const response = await fetch(`https://api.github.com/repos/${owner}/${repo}`, {
+            headers: {
+                'Authorization': authHeader,
+                'Accept': 'application/vnd.github.v3+json'
+            }
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            resultEl.style.background = 'var(--color-bg-3)';
+            resultEl.style.color = 'var(--color-success)';
+            resultEl.innerHTML = `✅ <strong>Connected!</strong> Repo: ${data.full_name} (${data.private ? 'Private' : 'Public'})<br>Permissions: ${data.permissions ? (data.permissions.push ? '✅ Write access' : '❌ Read-only') : 'Unknown'}`;
+        } else if (response.status === 401) {
+            resultEl.style.background = 'var(--color-bg-4)';
+            resultEl.style.color = 'var(--color-error)';
+            resultEl.textContent = '❌ Authentication failed. Token is invalid or expired.';
+        } else if (response.status === 404) {
+            resultEl.style.background = 'var(--color-bg-4)';
+            resultEl.style.color = 'var(--color-error)';
+            resultEl.textContent = '❌ Repository not found. Check owner and repo name.';
+        } else if (response.status === 403) {
+            resultEl.style.background = 'var(--color-bg-4)';
+            resultEl.style.color = 'var(--color-error)';
+            resultEl.textContent = '❌ Permission denied. Token needs "Contents: Read and write" scope.';
+        } else {
+            resultEl.style.background = 'var(--color-bg-4)';
+            resultEl.style.color = 'var(--color-error)';
+            resultEl.textContent = `❌ Error: ${response.status} ${response.statusText}`;
+        }
+    } catch (e) {
+        resultEl.style.background = 'var(--color-bg-4)';
+        resultEl.style.color = 'var(--color-error)';
+        resultEl.textContent = '❌ Network error: ' + e.message;
+    }
 }
 
 async function saveGitHubConfig() {
