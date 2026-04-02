@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mock Test Platform - Nobitha &amp; Doraemon</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <div class="app-container" id="app">
+        <!-- =================== LOGIN PAGE =================== -->
+        <div id="loginPage" class="login-page">
+            <div class="login-container">
+                <div class="login-header">
+                    <h1>&#127891; Mock Test Platform</h1>
+                    <p>Select user and login to continue</p>
+                </div>
+                <div class="user-selection">
+                    <div class="user-card" data-user="doraemon">
+                        <div class="user-avatar">&#129302;</div>
+                        <div class="user-name">Doraemon</div>
+                    </div>
+                    <div class="user-card" data-user="nobitha">
+                        <div class="user-avatar">&#128102;</div>
+                        <div class="user-name">Nobitha</div>
+                    </div>
+                </div>
+                <form id="loginForm">
+                    <div class="form-group">
+                        <label class="form-label">Username</label>
+                        <input type="text" class="form-input" id="username" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Password</label>
+                        <input type="password" class="form-input" id="password" placeholder="Enter password">
+                    </div>
+                    <div class="error-message" id="loginError">Invalid credentials. Please try again.</div>
+                    <button type="submit" class="btn btn-primary">Login</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- =================== MAIN APPLICATION =================== -->
+        <div id="mainApp" class="hidden">
+            <!-- Header -->
+            <header class="app-header">
+                <div class="header-left">
+                    <div class="app-logo">&#127891; Mock Test</div>
+                    <div class="user-info">
+                        <div class="user-avatar-small" id="headerAvatar">&#128102;</div>
+                        <div class="user-details">
+                            <h3 id="headerUserName">Nobitha Nobi</h3>
+                            <div class="user-role" id="headerUserRole">Student</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="header-right">
+                    <button class="btn btn-secondary notification-badge" id="notificationsBtn" data-count="0">&#128231;</button>
+                    <button class="btn btn-outline" id="logoutBtn">Logout</button>
+                </div>
+            </header>
+
+            <!-- =================== DASHBOARD =================== -->
+            <main class="dashboard" id="dashboard">
+                <div class="dashboard-header">
+                    <h2 id="dashboardTitle">Welcome back, Nobitha!</h2>
+                    <p class="dashboard-subtitle" id="dashboardSubtitle">Here's what's happening with your exams</p>
+                </div>
+
+                <!-- Tabs Navigation -->
+                <div class="tabs-nav">
+                    <div class="tabs-nav-inner">
+                        <button class="tab-btn active" data-tab="dashboard">&#128218; Dashboard</button>
+                        <button class="tab-btn" data-tab="results">&#128202; Results</button>
+                        <button class="tab-btn" data-tab="analytics">&#128269; Analytics</button>
+                        <button class="tab-btn" data-tab="calendar">&#128197; Calendar</button>
+                    </div>
+                </div>
+
+                <div id="tabContent">
+                    <!-- Dashboard Tab -->
+                    <div class="tab-content active" data-content="dashboard">
+                        <!-- Quick Actions -->
+                        <div class="quick-actions">
+                            <div class="action-card" id="createExamBtn">
+                                <div class="action-icon">&#128221;</div>
+                                <div class="action-title">Schedule Exam</div>
+                                <div class="action-description">Create and schedule a new exam</div>
+                            </div>
+                            <div class="action-card" id="viewExamsBtn">
+                                <div class="action-icon">&#128218;</div>
+                                <div class="action-title">Exams</div>
+                                <div class="action-description">View all scheduled exams</div>
+                            </div>
+                            <div class="action-card" id="viewResultsTab">
+                                <div class="action-icon">&#128202;</div>
+                                <div class="action-title">Results</div>
+                                <div class="action-description">View exam results and analytics</div>
+                            </div>
+                            <div class="action-card" id="analyticsCard">
+                                <div class="action-icon">&#128200;</div>
+                                <div class="action-title">Analytics</div>
+                                <div class="action-description">View performance trends</div>
+                            </div>
+                        </div>
+
+                        <!-- Statistics -->
+                        <div class="stats-grid" id="statsGrid">
+                            <div class="stat-card">
+                                <div class="stat-label">Total Exams</div>
+                                <div class="stat-value" id="statTotalExams">0</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-label">Completed</div>
+                                <div class="stat-value" id="statCompletedExams">0</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-label">Pending</div>
+                                <div class="stat-value" id="statPendingExams">0</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-label">Average Score</div>
+                                <div class="stat-value" id="statAvgScore">0%</div>
+                            </div>
+                        </div>
+
+                        <!-- Scheduled Exams -->
+                        <div class="exams-section">
+                            <div class="section-header">
+                                <h3 class="section-title">&#128197; Scheduled Exams</h3>
+                            </div>
+                            <div class="exams-list" id="scheduledExamsList">
+                                <div class="empty-state"><div class="empty-icon">&#128237;</div><p>No scheduled exams</p></div>
+                            </div>
+                        </div>
+
+                        <!-- Performance KPI Tiles -->
+                        <div class="exams-section">
+                            <div class="section-header">
+                                <h3 class="section-title">&#128200; Performance KPI</h3>
+                            </div>
+                            <div id="performanceKPITiles" class="kpi-grid"></div>
+                        </div>
+
+                        <!-- Exams Assigned Section -->
+                        <div class="exams-section">
+                            <div class="section-header">
+                                <h3 class="section-title">&#128228; Exams Assigned</h3>
+                                <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+                                    <input type="text" id="assignedExamsSearch" class="form-input" placeholder="Search exams..." style="width: 200px;">
+                                    <select id="assignedExamsFilter" class="form-select" style="width: 150px;">
+                                        <option value="all">All Status</option>
+                                        <option value="pending">Pending</option>
+                                        <option value="in_progress">In Progress</option>
+                                        <option value="completed">Completed</option>
+                                    </select>
+                                    <select id="assignedExamsSort" class="form-select" style="width: 150px;">
+                                        <option value="recent">Recent First</option>
+                                        <option value="score_high">Score: High to Low</option>
+                                        <option value="score_low">Score: Low to High</option>
+                                        <option value="by_status">By Status</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div id="assignedExamsSummary" style="margin-bottom: 20px;"></div>
+                            <div id="assignedExamsList" style="display: flex; flex-direction: column; gap: 16px;"></div>
+                        </div>
+
+                        <!-- Exam History Grid -->
+                        <div class="exams-section">
+                            <div class="section-header">
+                                <h3 class="section-title">&#128203; Exam History</h3>
+                            </div>
+                            <div id="examHistoryGrid" class="history-grid"></div>
+                        </div>
+                    </div>
+
+                    <!-- Results Tab -->
+                    <div class="tab-content" data-content="results">
+                        <div id="resultsTabContent"></div>
+                    </div>
+
+                    <!-- Analytics Tab -->
+                    <div class="tab-content" data-content="analytics">
+                        <div id="analyticsTabContent"></div>
+                    </div>
+
+                    <!-- Calendar Tab -->
+                    <div class="tab-content" data-content="calendar">
+                        <div id="calendarTabContent">
+                            <div class="section-header">
+                                <h3 class="section-title">&#128197; Calendar</h3>
+                                <div style="display: flex; gap: 12px;">
+                                    <button class="btn btn-secondary" id="calPrevBtn">&larr; Previous</button>
+                                    <button class="btn btn-primary" id="calTodayBtn">Today</button>
+                                    <button class="btn btn-secondary" id="calNextBtn">Next &rarr;</button>
+                                </div>
+                            </div>
+                            <div id="calendarView"></div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+
+            <!-- =================== EXAM INTERFACE =================== -->
+            <div class="exam-interface hidden" id="examInterface">
+                <div class="exam-header-bar">
+                    <h2 id="examInterfaceTitle">Exam Title</h2>
+                    <div id="examInterfaceDescription">Exam description</div>
+                    <div style="background: var(--color-bg-4); padding: 12px; border-radius: 8px; margin-top: 12px; border: 2px solid var(--color-warning); text-align: center;">
+                        <strong style="color: var(--color-warning);">&#9888;&#65039; WARNING:</strong> Exiting fullscreen will automatically submit your exam
+                    </div>
+                    <div class="exam-timer">
+                        <div>
+                            <strong>Time Remaining:</strong>
+                            <span class="timer-display" id="timerDisplay">00:00</span>
+                        </div>
+                        <button class="btn btn-primary" id="submitExamBtn" style="width:auto;">Submit Exam</button>
+                    </div>
+                </div>
+                <div class="exam-questions" id="examQuestions"></div>
+            </div>
+
+            <!-- =================== RESULTS VIEW =================== -->
+            <div class="results-container hidden" id="resultsView">
+                <div class="results-header-card">
+                    <h2 id="resultsExamTitle">Exam Results</h2>
+                    <div class="score-display" id="resultsScore">0/0</div>
+                    <div class="grade-badge" id="resultsGrade">A+</div>
+                </div>
+                <div class="performance-grid">
+                    <div class="performance-card">
+                        <div class="stat-label">Percentage</div>
+                        <div class="stat-value" id="resultsPercentage">0%</div>
+                    </div>
+                    <div class="performance-card">
+                        <div class="stat-label">Questions Attempted</div>
+                        <div class="stat-value" id="resultsAttempted">0/0</div>
+                    </div>
+                    <div class="performance-card">
+                        <div class="stat-label">Correct Answers</div>
+                        <div class="stat-value" id="resultsCorrect">0</div>
+                    </div>
+                    <div class="performance-card">
+                        <div class="stat-label">Time Taken</div>
+                        <div class="stat-value" id="resultsTime">00:00</div>
+                    </div>
+                </div>
+                <div id="behavioralMetricsSection"></div>
+                <div class="chart-container">
+                    <canvas id="performanceChart"></canvas>
+                </div>
+                <div class="answers-review">
+                    <h3 class="section-title">Detailed Review</h3>
+                    <div id="answersReviewList"></div>
+                </div>
+                <div style="margin-top: 24px; text-align: center;">
+                    <button class="btn btn-primary" id="backToDashboardBtn">Back to Dashboard</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- =================== CREATE EXAM MODAL =================== -->
+        <div class="modal" id="createExamModal">
+            <div class="modal-content" id="createExamModalContent">
+                <div class="modal-header">
+                    <h2 class="modal-title">Schedule New Exam</h2>
+                    <button class="modal-close" id="closeCreateExamModal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <form id="createExamForm">
+                        <div class="form-section">
+                            <h3 class="form-section-title">Exam Details</h3>
+                            <div class="form-group">
+                                <label class="form-label">Exam Title <span class="required-asterisk">*</span></label>
+                                <input type="text" class="form-input" id="examTitle" placeholder="Enter exam title">
+                                <span class="field-error" id="examTitleError" style="display:none;">Exam title is required</span>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Description <span class="required-asterisk">*</span></label>
+                                <textarea class="form-textarea" id="examDescription" placeholder="Enter exam description and instructions"></textarea>
+                                <span class="field-error" id="examDescriptionError" style="display:none;">Description is required</span>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label class="form-label">Schedule For <span class="required-asterisk">*</span></label>
+                                    <select class="form-select" id="examStudent">
+                                        <option value="">Select Student</option>
+                                    </select>
+                                    <span class="field-error" id="examStudentError" style="display:none;">Please select a user</span>
+                                </div>
+                                <div class="form-group">
+                                    <label class="form-label">Duration (minutes) <span class="required-asterisk">*</span></label>
+                                    <input type="number" class="form-input" id="examDuration" placeholder="30" min="5">
+                                    <span class="field-error" id="examDurationError" style="display:none;">Duration is required (min 5)</span>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Exam Window (From - To) <span class="required-asterisk">*</span></label>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label class="form-label" style="font-size:12px;color:var(--color-text-secondary);">Start Date &amp; Time</label>
+                                        <input type="datetime-local" class="form-input" id="examFromDateTime">
+                                        <span class="field-error" id="examFromError" style="display:none;">Start date and time required</span>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label" style="font-size:12px;color:var(--color-text-secondary);">End Date &amp; Time</label>
+                                        <input type="datetime-local" class="form-input" id="examToDateTime">
+                                        <span class="field-error" id="examToError" style="display:none;">End date and time required</span>
+                                    </div>
+                                </div>
+                                <div id="examWindowDisplay" style="margin-top:8px;padding:8px;background:var(--color-bg-3);border-radius:6px;font-size:13px;display:none;">
+                                    <strong>Available:</strong> <span id="windowText"></span><br>
+                                    <strong>Duration:</strong> <span id="windowDuration"></span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-section">
+                            <h3 class="form-section-title">Questions</h3>
+                            <div class="questions-list" id="questionsList"></div>
+                            <button type="button" class="btn btn-secondary" id="addQuestionBtn" style="margin-top:12px;">+ Add Question</button>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-outline" id="cancelCreateExam">Cancel</button>
+                    <button class="btn btn-primary" id="scheduleExamBtn" style="width:auto;">Schedule Exam</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- =================== EMAIL MODAL =================== -->
+        <div class="modal" id="emailModal">
+            <div class="modal-content email-modal">
+                <div class="modal-header">
+                    <h2 class="modal-title">&#9993;&#65039; Email Notification Sent</h2>
+                    <button class="modal-close" id="closeEmailModal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="email-content" id="emailContent"></div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-primary" id="closeEmailModalBtn" style="width:auto;">Close</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- =================== METRICS MODAL =================== -->
+        <div class="modal" id="metricsModal">
+            <div class="modal-content" style="max-width:1200px;">
+                <div class="modal-header" style="background:var(--color-bg-1);border-bottom:2px solid var(--color-primary);">
+                    <div>
+                        <h2 class="modal-title" id="metricsModalTitle">Exam Details</h2>
+                        <div id="metricsModalSubtitle" style="font-size:14px;color:var(--color-text-secondary);margin-top:4px;"></div>
+                    </div>
+                    <button class="modal-close" id="closeMetricsModal">&times;</button>
+                </div>
+                <div class="modal-body" style="max-height:80vh;overflow-y:auto;">
+                    <div id="metricsModalContent"></div>
+                </div>
+                <div class="modal-footer" style="background:var(--color-bg-1);border-top:2px solid var(--color-card-border);">
+                    <button class="btn btn-outline" id="downloadReportBtn">&#128229; Download Report</button>
+                    <button class="btn btn-outline" id="printReportBtn">&#128424;&#65039; Print</button>
+                    <button class="btn btn-outline" id="sendToStudentBtn">&#128231; Send to Student</button>
+                    <button class="btn btn-primary" id="closeMetricsModalBtn" style="width:auto;">Close</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- =================== NOTIFICATION POPUP =================== -->
+        <div class="notification-popup" id="notificationPopup">
+            <div class="notification-header">
+                <div class="notification-icon">&#128231;</div>
+                <div class="notification-title" id="notificationTitle">Notification</div>
+            </div>
+            <div class="notification-body" id="notificationBody"></div>
+        </div>
+    </div>
+
+    <!-- JavaScript Modules -->
+    <script src="js/firebase-config.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/state.js"></script>
+    <script src="js/github-images.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/dashboard.js"></script>
+    <script src="js/exams.js"></script>
+    <script src="js/exam-taking.js"></script>
+    <script src="js/results.js"></script>
+    <script src="js/calendar.js"></script>
+    <script src="js/notifications.js"></script>
+    <script src="js/metrics-modal.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
