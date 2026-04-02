@@ -1,5 +1,6 @@
 /* ============================================
-   App Initialization - Firebase Edition
+   App Initialization
+   Local auth + Firestore for data
    ============================================ */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -22,20 +23,11 @@ document.addEventListener('DOMContentLoaded', () => {
         Notification.requestPermission();
     }
 
-    // Listen for Firebase auth state changes (session restore)
-    auth.onAuthStateChanged(async (firebaseUser) => {
-        if (firebaseUser && isFirebaseConfigured()) {
-            try {
-                const profile = await api.getUserProfile(firebaseUser.uid);
-                if (profile) {
-                    state.currentUser = profile;
-                    await loadStateFromServer();
-                    await loadGitHubConfig();
-                    showMainApp();
-                }
-            } catch (e) {
-                console.warn('Session restore failed:', e);
-            }
-        }
-    });
+    // Restore session from sessionStorage (page reload)
+    if (restoreSession()) {
+        showMainApp();
+        // Load cloud data in background (non-blocking)
+        loadStateFromServer();
+        loadGitHubConfig();
+    }
 });

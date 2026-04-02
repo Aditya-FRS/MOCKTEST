@@ -85,6 +85,9 @@ async function handleLogin() {
     errorMsg.classList.remove('show');
     showMainApp();
 
+    // Seed all user profiles into Firestore (so student dropdown works)
+    seedAllUserProfiles();
+
     // Load cloud data in background (non-blocking)
     loadStateFromServer();
     loadGitHubConfig();
@@ -158,4 +161,16 @@ function restoreSession() {
         return true;
     }
     return false;
+}
+
+// Seed all hardcoded user profiles into Firestore
+// so they appear in student/teacher dropdowns
+async function seedAllUserProfiles() {
+    try {
+        await Promise.all(
+            Object.values(USERS).map(u => api.ensureUserProfile(u))
+        );
+    } catch (e) {
+        console.warn('Failed to seed user profiles:', e);
+    }
 }

@@ -5,35 +5,29 @@
    ============================================ */
 
 const api = {
-    // ─── Auth ───
-    async login(email, password) {
-        const cred = await auth.signInWithEmailAndPassword(email, password);
-        const userDoc = await db.collection('users').doc(cred.user.uid).get();
-        if (!userDoc.exists) throw new Error('User profile not found');
-        return { uid: cred.user.uid, ...userDoc.data() };
-    },
-
-    async logout() {
-        await auth.signOut();
-    },
-
-    async getCurrentUser() {
-        return new Promise((resolve) => {
-            const unsub = auth.onAuthStateChanged(user => {
-                unsub();
-                resolve(user);
-            });
-        });
-    },
-
-    async getUserProfile(uid) {
-        const doc = await db.collection('users').doc(uid).get();
-        return doc.exists ? { uid: doc.id, ...doc.data() } : null;
-    },
+    // ─── Users ───
+    // Auth is handled locally (hardcoded credentials in auth.js)
+    // Firestore is used only for data storage
 
     async getAllUsers() {
         const snap = await db.collection('users').get();
         return snap.docs.map(d => ({ uid: d.id, ...d.data() }));
+    },
+
+    async ensureUserProfile(user) {
+        // Seed user profile into Firestore if it doesn't exist
+        const docRef = db.collection('users').doc(user.username);
+        const doc = await docRef.get();
+        if (!doc.exists) {
+            await docRef.set({
+                username: user.username,
+                name: user.name,
+                email: user.email,
+                personalEmail: user.personalEmail,
+                role: user.role,
+                avatar: user.avatar
+            });
+        }
     },
 
     // ─── Exams ───
