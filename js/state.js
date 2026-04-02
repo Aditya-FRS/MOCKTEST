@@ -40,7 +40,20 @@ async function loadStateFromServer() {
         api.getTodos(username).catch(e => { console.warn('Failed to load todos:', e); return []; })
     ]);
 
-    state.users = users;
+    // Merge Firestore users with hardcoded ones, dedup by username
+    const userMap = new Map();
+    // Hardcoded users first (always present)
+    if (typeof USERS !== 'undefined') {
+        Object.values(USERS).forEach(u => userMap.set(u.username, {
+            username: u.username, name: u.name, email: u.email,
+            personalEmail: u.personalEmail, role: u.role, avatar: u.avatar
+        }));
+    }
+    // Firestore users override (may have additional fields)
+    users.forEach(u => {
+        if (u.username) userMap.set(u.username, u);
+    });
+    state.users = Array.from(userMap.values());
     state.exams = exams;
     state.notifications = notifications;
     state.todos = todos;

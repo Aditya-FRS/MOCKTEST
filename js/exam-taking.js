@@ -361,6 +361,8 @@ function initExamTracking() {
     document.addEventListener('visibilitychange', _handleVisibility);
     document.addEventListener('copy', _handleCopy);
     document.addEventListener('paste', _handlePaste);
+    document.addEventListener('keydown', _handleSuspiciousKeys);
+    window.addEventListener('blur', _handleWindowBlur);
     _startIdleTracking();
 }
 
@@ -368,6 +370,8 @@ function stopExamTracking() {
     document.removeEventListener('visibilitychange', _handleVisibility);
     document.removeEventListener('copy', _handleCopy);
     document.removeEventListener('paste', _handlePaste);
+    document.removeEventListener('keydown', _handleSuspiciousKeys);
+    window.removeEventListener('blur', _handleWindowBlur);
     if (state.idleTimer) clearTimeout(state.idleTimer);
     if (state.activityTimer) clearInterval(state.activityTimer);
 }
@@ -406,6 +410,43 @@ function _handlePaste() {
         showNotificationPopup('\u26A0\uFE0F Warning', 'Paste action detected during exam');
         api.sendProctoringEvent(state.currentExam.id, 'paste', { time: new Date().toISOString() }).catch(() => {});
     }
+}
+
+// Detect Windows key, Alt+Tab, Ctrl+Esc, etc. — auto-submit exam
+function _handleSuspiciousKeys(e) {
+    if (!state.currentExam || state.currentExam.status !== 'in_progress') return;
+
+    // Windows key (Meta), Alt+Tab, Ctrl+Esc, Alt+F4
+    const isSuspicious =
+        e.key === 'Meta' || e.key === 'OS' ||                    // Windows key
+        (e.altKey && e.key === 'Tab') ||                          // Alt+Tab
+        (e.ctrlKey && e.key === 'Escape') ||                      // Ctrl+Esc
+        (e.altKey && e.key === 'F4') ||                           // Alt+F4
+        (e.altKey && e.key === 'Escape') ||                       // Alt+Esc
+        (e.ctrlKey && e.altKey && e.key === 'Delete');            // Ctrl+Alt+Del
+
+    if (isSuspicious) {
+        e.preventDefault();
+        e.stopPropagation();
+        // Auto-submit with warning
+        autoSubmitExamOnFullscreenExit();
+    }
+}
+
+// Window blur = user switched away (Alt+Tab, Win key, clicked outside, etc.)
+function _handleWindowBlur() {
+    if (!state.currentExam || state.currentExam.status !== 'in_progress') return;
+
+    // Record the tab switch event
+    const event = { time: new Date().toISOString(), type: 'window_blur', timestamp: Date.now() };
+    state.examMetrics.tabSwitches.push(event);
+
+    if (state.currentExam) {
+        api.sendProctoringEvent(state.currentExam.id, 'tab_switch', event).catch(() => {});
+    }
+
+    // Auto-submit the exam immediately
+    autoSubmitExamOnFullscreenExit();
 }
 
 function _startIdleTracking() {

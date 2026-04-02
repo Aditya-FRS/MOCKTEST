@@ -132,9 +132,29 @@ function handleLogout() {
 
 function showNotificationsAlert() {
     const msg = state.notifications.length > 0
-        ? state.notifications.map(n => `\u2022 ${n.title}\n  ${n.body}`).join('\n\n')
+        ? state.notifications.map(n => {
+            const timeStr = n.timestamp ? formatNotificationTime(n.timestamp) : '';
+            return `\u2022 ${n.title}\n  ${n.body}${timeStr ? '\n  \u{1F552} ' + timeStr : ''}`;
+        }).join('\n\n')
         : 'No new notifications';
     alert('\u{1F4E7} Notifications:\n\n' + msg);
+}
+
+// Format notification timestamp as relative or absolute time
+function formatNotificationTime(timestamp) {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffSecs = Math.floor(diffMs / 1000);
+    const diffMins = Math.floor(diffSecs / 60);
+    const diffHours = Math.floor(diffMins / 60);
+    const diffDays = Math.floor(diffHours / 24);
+
+    if (diffSecs < 60) return 'Just now';
+    if (diffMins < 60) return `${diffMins} min${diffMins > 1 ? 's' : ''} ago`;
+    if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+    if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
 // Restore session on page reload

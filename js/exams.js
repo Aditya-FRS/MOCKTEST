@@ -304,6 +304,21 @@ function addQuestion() {
         const pasteIndicator = document.getElementById(`paste-indicator-${qId}`);
         const hiddenData = document.getElementById(`image-data-${qId}`);
 
+        // Auto-fill MCQ options with 1,2,3,4 when image is detected
+        function autoFillOptionsOnImage(questionId) {
+            const questionItem = document.querySelector(`[data-question-id="${questionId}"]`);
+            if (!questionItem) return;
+            const type = questionItem.querySelector('.question-type').value;
+            if (type === 'mcq') {
+                const optionInputs = questionItem.querySelectorAll('.option-item input[type="text"]');
+                optionInputs.forEach((inp, idx) => {
+                    if (!inp.value.trim()) {
+                        inp.value = String(idx + 1);
+                    }
+                });
+            }
+        }
+
         // Handle paste
         textarea.addEventListener('paste', function(e) {
             const items = e.clipboardData.items;
@@ -321,6 +336,8 @@ function addQuestion() {
                         imagePreview.style.display = 'block';
                         pasteIndicator.textContent = '\u2705 Image detected';
                         pasteIndicator.style.color = 'var(--color-success)';
+                        // Auto-fill options 1,2,3,4
+                        autoFillOptionsOnImage(qId);
                     };
                     reader.readAsDataURL(blob);
                     break;
@@ -341,6 +358,8 @@ function addQuestion() {
                     imagePreview.style.display = 'block';
                     pasteIndicator.textContent = '\u2705 Image uploaded';
                     pasteIndicator.style.color = 'var(--color-success)';
+                    // Auto-fill options 1,2,3,4
+                    autoFillOptionsOnImage(qId);
                 };
                 reader.readAsDataURL(file);
             }

@@ -342,7 +342,9 @@ const api = {
                             state.notifications.unshift(notif);
                             updateNotificationBadge();
                             if (typeof showNotificationPopup === 'function') {
-                                showNotificationPopup(notif.title, notif.body);
+                                const timeStr = notif.timestamp && typeof formatNotificationTime === 'function'
+                                    ? ' \u2022 ' + formatNotificationTime(notif.timestamp) : '';
+                                showNotificationPopup(notif.title, notif.body + timeStr);
                             }
                             // Browser notification
                             if ('Notification' in window && Notification.permission === 'granted') {
