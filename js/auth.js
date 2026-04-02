@@ -103,6 +103,7 @@ function showMainApp() {
 function setupHeaderHandlers() {
     document.getElementById('logoutBtn').addEventListener('click', handleLogout);
     document.getElementById('notificationsBtn').addEventListener('click', showNotificationsAlert);
+    document.getElementById('settingsBtn').addEventListener('click', showSettingsMenu);
 }
 
 function updateHeader() {
@@ -181,6 +182,114 @@ function restoreSession() {
         return true;
     }
     return false;
+}
+
+// ─── Settings Menu ───
+function showSettingsMenu() {
+    const html = `
+        <div style="padding:24px;">
+            <h3 style="margin-bottom:20px;">\u2699\uFE0F Settings</h3>
+
+            <!-- GitHub Image Config -->
+            <div style="background:var(--color-bg-2);padding:16px;border-radius:12px;margin-bottom:16px;border:1px solid var(--color-card-border);">
+                <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">
+                    <span style="font-size:24px;">\u{1F4F7}</span>
+                    <div>
+                        <div style="font-weight:600;">GitHub Image Storage</div>
+                        <div style="font-size:13px;color:var(--color-text-secondary);">Store exam images on GitHub instead of Firestore</div>
+                    </div>
+                </div>
+                <div style="margin-top:8px;font-size:13px;color:${isGitHubConfigured() ? 'var(--color-success)' : 'var(--color-warning)'};">
+                    ${isGitHubConfigured() ? '\u2705 Configured — images go to GitHub' : '\u26A0\uFE0F Not configured — images stored as base64 in Firestore'}
+                </div>
+                <button class="btn btn-primary" style="width:auto;margin-top:12px;" onclick="closeDynamicModal();showGitHubConfigModal();">
+                    ${isGitHubConfigured() ? 'Edit GitHub Config' : 'Setup GitHub Config'}
+                </button>
+            </div>
+
+            <!-- Delete All Data -->
+            <div style="background:var(--color-bg-2);padding:16px;border-radius:12px;margin-bottom:16px;border:1px solid var(--color-error);">
+                <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">
+                    <span style="font-size:24px;">\u{1F5D1}\uFE0F</span>
+                    <div>
+                        <div style="font-weight:600;color:var(--color-error);">Delete All Data</div>
+                        <div style="font-size:13px;color:var(--color-text-secondary);">Remove all exams, results, todos, notifications from Firestore</div>
+                    </div>
+                </div>
+                <button class="btn btn-outline" style="width:auto;margin-top:12px;color:var(--color-error);border-color:var(--color-error);" onclick="confirmDeleteAllData()">
+                    \u{1F5D1}\uFE0F Delete All Data
+                </button>
+            </div>
+
+            <!-- Close -->
+            <div style="text-align:right;margin-top:20px;">
+                <button class="btn btn-secondary" onclick="closeDynamicModal()">Close</button>
+            </div>
+        </div>`;
+    showDynamicModal(html);
+}
+
+function confirmDeleteAllData() {
+    const html = `
+        <div style="padding:32px;text-align:center;">
+            <div style="font-size:64px;margin-bottom:16px;">\u26A0\uFE0F</div>
+            <h2 style="color:var(--color-error);margin-bottom:16px;">Delete All Data?</h2>
+            <p style="margin-bottom:8px;">This will permanently delete:</p>
+            <ul style="text-align:left;max-width:300px;margin:0 auto 24px;list-style:none;padding:0;">
+                <li style="padding:6px 0;">\u274C All exams & results</li>
+                <li style="padding:6px 0;">\u274C All exam answers & behavioral metrics</li>
+                <li style="padding:6px 0;">\u274C All todos</li>
+                <li style="padding:6px 0;">\u274C All notifications</li>
+            </ul>
+            <p style="color:var(--color-error);font-weight:bold;margin-bottom:24px;">This cannot be undone!</p>
+            <div style="display:flex;gap:12px;justify-content:center;">
+                <button class="btn btn-secondary" onclick="closeDynamicModal()">Cancel</button>
+                <button class="btn btn-primary" style="background:var(--color-error);width:auto;" onclick="deleteAllData()">Yes, Delete Everything</button>
+            </div>
+        </div>`;
+    showDynamicModal(html);
+}
+
+async function deleteAllData() {
+    const collections = ['exams', 'exam_results', 'exam_answers', 'behavioral_metrics', 'todos', 'notifications'];
+    let totalDeleted = 0;
+
+    try {
+        showDynamicModal('<div style="padding:32px;text-align:center;"><div style="font-size:48px;margin-bottom:16px;">\u23F3</div><h3>Deleting all data...</h3><p id="deleteProgress">Starting...</p></div>');
+
+        for (const col of collections) {
+            const progress = document.getElementById('deleteProgress');
+            if (progress) progress.textContent = 'Deleting ' + col + '...';
+
+            const snap = await db.collection(col).get();
+            const batch = db.batch();
+            let count = 0;
+
+            snap.docs.forEach(doc => {
+                batch.delete(doc.ref);
+                count++;
+            });
+
+            if (count > 0) {
+                await batch.commit();
+                totalDeleted += count;
+            }
+        }
+
+        // Clear local state
+        state.exams = [];
+        state.notifications = [];
+        state.todos = [];
+        state._loaded = false;
+
+        closeDynamicModal();
+        showNotificationPopup('\u2705 Data Deleted', totalDeleted + ' records deleted from Firestore');
+        loadDashboard();
+
+    } catch (e) {
+        closeDynamicModal();
+        showNotificationPopup('\u274C Error', 'Failed to delete data: ' + e.message);
+    }
 }
 
 // Seed all hardcoded user profiles into Firestore
