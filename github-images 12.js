@@ -401,3 +401,11 @@ async function loadGitHubConfig() {
         console.warn('Failed to load GitHub config:', e);
     }
 }
+Eventhough the timer completes the exam is not auto submitting need to fix it
+After creating the exam there is no feasibilty to change the exam  means editing again
+in doraemon user both asigned by me andd assigned to you showing nobitha user name in nobitha login both showing doraemon name
+After starter=d the exam the timer is only on top while i scroll down timer is not visible becasue on top so while scrlling down it sshould be right of scrrren on top and for last 5 mins one warning sound and last 1 min one warning sound for last second count for every count small waring tick tick sound should play
+
+big change we'll upload a file then it should segregate and should ask user how many questins and other related stuff which is common and ther it should prepare the question paper keeping the present functionality there should be auto mode in that it should make this change we'll upload this from github repo or local storage 
+
+ need to make some UX changes keeeping the functionality same 
